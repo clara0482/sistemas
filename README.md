@@ -54,39 +54,6 @@ java Main
 
 Se os arquivos estiverem dentro de uma pasta `src`, compile com `javac src/*.java -d out` e execute com `java -cp out Main`.
 
-## Exemplo de uso
-
-```
-====================================
-    BEM-VINDO AO APP DE RESERVAS
-====================================
-
-Por favor, realize seu cadastro para continuar:
-Digite seu nome: Maria
-Digite seu telefone (com DDD): 91 98888-7777
-
-Cadastro realizado com sucesso, Maria!
-
-============== MENU ==============
-1. Ver Restaurantes e Fazer Reserva
-2. Acompanhar minha posicao na fila
-3. Sair
-==================================
-Escolha uma opcao: 1
-```
-
-Em seguida, o sistema lista os restaurantes, mostra os horários e as mesas disponíveis e pede a quantidade de pessoas e o horário no formato `HH:mm`.
-
-## Validação dos inputs
-
-| Input | Exceção tratada | Quando ocorre |
-|---|---|---|
-| Nome | `IllegalArgumentException` | Campo vazio |
-| Telefone | `IllegalArgumentException` | Não tem 10 ou 11 dígitos |
-| Opção do menu, restaurante, pessoas | `NumberFormatException` | Valor digitado não é um número inteiro |
-| Opção do menu, restaurante, pessoas | `IllegalArgumentException` | Número fora do intervalo permitido |
-| Horário | `DateTimeParseException` | Formato diferente de `HH:mm` |
-
 ## Regras de negócio
 
 - Ao criar uma reserva, a mesa é ocupada imediatamente.
