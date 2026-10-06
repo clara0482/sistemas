@@ -61,25 +61,10 @@ Se os arquivos estiverem dentro de uma pasta `src`, compile com `javac src/*.jav
 - O horário precisa estar entre os horários disponíveis do restaurante. A reserva é feita para a data de hoje.
 - Se não houver mesa compatível, o cliente entra na fila de espera do restaurante.
 - Mesas têm 2, 4, 6 ou 8 lugares. Cada restaurante recebe entre 4 e 8 mesas, e cerca de 40% começam ocupadas.
+.
 
-## Limitações conhecidas
 
-- Os dados ficam apenas em memória e são perdidos ao encerrar o programa.
-- A disponibilidade da mesa não considera conflitos de horário: a mesa fica ocupada assim que é reservada.
-- O limite de 8 pessoas por reserva acompanha a maior capacidade gerada em `Restaurante`. Se alterar a capacidade das mesas, ajuste também o `lerInteiro` correspondente na `Main`.
+## Equipe
 
-## Próximos passos
+Desenvolvido por Arthur Dantas, Maria Clara, Victor Yoshi, Rafael Chada
 
-- Interface gráfica com JavaFX.
-- Persistência dos dados (arquivo ou banco de dados).
-- Verificação de conflitos de reserva por horário.
-- Cancelamento e conclusão de reservas pelo menu.
-- Chamada automática do próximo cliente da fila quando uma mesa for liberada.
-
-## Autor
-
-Desenvolvido por **SEU NOME**.
-
-## Licença
-
-Defina a licença do projeto (por exemplo, MIT) e adicione o arquivo `LICENSE` ao repositório.
