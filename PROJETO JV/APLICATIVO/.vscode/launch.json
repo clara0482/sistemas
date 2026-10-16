@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "MainFX (interface JavaFX)",
+            "request": "launch",
+            "mainClass": "MainFX",
+            "vmArgs": "--module-path lib/javafx-sdk-21.0.5/lib --add-modules javafx.controls"
+        },
+        {
+            "type": "java",
+            "name": "Main (console)",
+            "request": "launch",
+            "mainClass": "Main"
+        }
+    ]
+}

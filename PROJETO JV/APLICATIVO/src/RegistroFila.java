@@ -1,11 +1,13 @@
 public class RegistroFila {
     private Cliente cliente;
     private int quantidadePessoas;
-    private boolean avisoPrevioEnviado; //nao acho que faz sentido essa logica de usar um boolean para isso, acho que se tivesse apenas um metodo seria o suficiente 
+    private String horario;
+    private boolean avisoPrevioEnviado;
 
-    public RegistroFila(Cliente cliente, int quantidadePessoas) {
+    public RegistroFila(Cliente cliente, int quantidadePessoas, String horario) {
         this.cliente = cliente;
         this.quantidadePessoas = quantidadePessoas;
+        this.horario = horario;
         this.avisoPrevioEnviado = false;
     }
 
@@ -16,5 +18,6 @@ public class RegistroFila {
 
     public Cliente getCliente() { return cliente; }
     public int getQuantidadePessoas() { return quantidadePessoas; }
+    public String getHorario() { return horario; }
     public boolean isAvisoPrevioEnviado() { return avisoPrevioEnviado; }
 }

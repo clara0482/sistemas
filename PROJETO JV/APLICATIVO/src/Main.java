@@ -1,151 +1,121 @@
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Main {
-
-    private static final Scanner scanner = new Scanner(System.in);
-
-    // Texto obrigatorio: IllegalArgumentException se vazio
-    private static String lerTextoObrigatorio(String mensagem, String nomeCampo) {
-        while (true) {
-            System.out.print(mensagem);
-            try {
-                String texto = scanner.nextLine().trim();
-                if (texto.isEmpty()) {
-                    throw new IllegalArgumentException(nomeCampo + " nao pode ficar vazio.");
-                }
-                return texto;
-            } catch (IllegalArgumentException e) {
-                System.out.println("ERRO: " + e.getMessage());
-            }
-        }
-    }
-
-    // Telefone: IllegalArgumentException se nao tiver 10 ou 11 digitos
-    private static String lerTelefone(String mensagem) {
-        while (true) {
-            System.out.print(mensagem);
-            try {
-                String texto = scanner.nextLine().trim();
-                String digitos = texto.replaceAll("\\D", "");
-                if (digitos.length() < 10 || digitos.length() > 11) {
-                    throw new IllegalArgumentException("Telefone invalido. Informe DDD + numero (10 ou 11 digitos).");
-                }
-                return texto;
-            } catch (IllegalArgumentException e) {
-                System.out.println("ERRO: " + e.getMessage());
-            }
-        }
-    }
-
-    // Inteiro dentro de um intervalo:
-    // NumberFormatException (nao e numero) e IllegalArgumentException (fora do intervalo)
-    private static int lerInteiro(String mensagem, int minimo, int maximo) {
-        while (true) {
-            System.out.print(mensagem);
-            try {
-                int valor = Integer.parseInt(scanner.nextLine().trim());
-                if (valor < minimo || valor > maximo) {
-                    throw new IllegalArgumentException("Digite um numero entre " + minimo + " e " + maximo + ".");
-                }
-                return valor;
-            } catch (NumberFormatException e) {
-                System.out.println("ERRO: Digite apenas numeros inteiros.");
-            } catch (IllegalArgumentException e) {
-                System.out.println("ERRO: " + e.getMessage());
-            }
-        }
-    }
-
-    // Horario: DateTimeParseException se nao estiver no formato HH:mm
-    private static LocalDateTime lerHorario(String mensagem) {
-        while (true) {
-            System.out.print(mensagem);
-            try {
-                LocalTime hora = LocalTime.parse(scanner.nextLine().trim());
-                return LocalDateTime.of(LocalDate.now(), hora);
-            } catch (DateTimeParseException e) {
-                System.out.println("ERRO: Horario invalido. Use o formato HH:mm com dois digitos (ex.: 20:30).");
-            }
-        }
-    }
-
     public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
 
+        // As mesas, horários e reservas de outros clientes são gerados
+        // automaticamente pela classe Restaurante. Basta informar o nome.
         ArrayList<Restaurante> listaDeRestaurantes = new ArrayList<>();
         listaDeRestaurantes.add(new Restaurante("Sabor POO (Massas e Vinhos)"));
         listaDeRestaurantes.add(new Restaurante("Java Grill (Churrascaria)"));
         listaDeRestaurantes.add(new Restaurante("Sushi Byte (Comida Japonesa)"));
-        // =================================================================
 
         System.out.println("====================================");
         System.out.println("    BEM-VINDO AO APP DE RESERVAS    ");
         System.out.println("====================================");
 
-        // 1. O CLIENTE SE CADASTRA PRIMEIRO
+        // 1. Cadastro do cliente
         System.out.println("\nPor favor, realize seu cadastro para continuar:");
-        String nome = lerTextoObrigatorio("Digite seu nome: ", "O nome");
-        String telefone = lerTelefone("Digite seu telefone (com DDD): ");
+        String nome = lerTexto(scanner, "Digite seu nome: ");
+        String telefone = lerTexto(scanner, "Digite seu telefone: ");
 
         Cliente clienteAtivo = new Cliente(nome, telefone);
         System.out.println("\nCadastro realizado com sucesso, " + clienteAtivo.getNome() + "!");
 
-        // 2. MENU INTERATIVO DO APLICATIVO
+        // 2. Menu interativo
         int opcao = 0;
         while (opcao != 3) {
             System.out.println("\n============== MENU ==============");
             System.out.println("1. Ver Restaurantes e Fazer Reserva");
-            System.out.println("2. Acompanhar minha posicao na fila");
+            System.out.println("2. Acompanhar minha posição na fila");
             System.out.println("3. Sair");
             System.out.println("==================================");
-            opcao = lerInteiro("Escolha uma opcao: ", 1, 3);
+            opcao = lerInteiro(scanner, "Escolha uma opção: ");
 
             switch (opcao) {
                 case 1:
-                    System.out.println("\n--- RESTAURANTES CADASTRADOS ---");
-                    for (int i = 0; i < listaDeRestaurantes.size(); i++) {
-                        System.out.println((i + 1) + ". " + listaDeRestaurantes.get(i).getNome());
-                    }
-
-                    int escolhaRestaurante = lerInteiro("\nEscolha o numero do restaurante: ",
-                            1, listaDeRestaurantes.size());
-                    Restaurante restauranteEscolhido = listaDeRestaurantes.get(escolhaRestaurante - 1);
-
-                    System.out.println("\nBem-vindo a pagina do restaurante: " + restauranteEscolhido.getNome());
-                    // O app mostra as opcoes antes do usuario pedir
-                    restauranteEscolhido.exibirOpcoesDisponiveis();
-
-                    int qtd = lerInteiro("\nSua mesa sera para quantas pessoas? ", 1, 8);
-                    LocalDateTime horario = lerHorario("Qual o horario desejado (formato HH:mm, como mostrado acima)? ");
-
-                    // O sistema processa a reserva e vincula a uma mesa livre daquele tamanho
-                    restauranteEscolhido.solicitarMesa(clienteAtivo, qtd, horario);
+                    fazerReserva(scanner, listaDeRestaurantes, clienteAtivo);
                     break;
-
                 case 2:
-                    System.out.println("\n--- STATUS DA FILA ---");
-                    boolean estaNaFila = false;
-                    for (Restaurante r : listaDeRestaurantes) {
-                        int posicao = r.acompanharFila(clienteAtivo);
-                        if (posicao > 0) {
-                            System.out.println("No restaurante '" + r.getNome() + "', voce e o numero " + posicao + " na fila.");
-                            estaNaFila = true;
-                        }
-                    }
-                    if (!estaNaFila) {
-                        System.out.println("Voce nao esta aguardando na fila de nenhum restaurante no momento.");
-                    }
+                    acompanharFila(listaDeRestaurantes, clienteAtivo);
                     break;
-
                 case 3:
-                    System.out.println("Saindo do aplicativo... Ate logo, " + clienteAtivo.getNome() + "!");
+                    System.out.println("Saindo do aplicativo... Até logo, " + clienteAtivo.getNome() + "!");
                     break;
+                default:
+                    System.out.println("Opção inválida. Tente novamente.");
             }
         }
         scanner.close();
+    }
+
+    private static void fazerReserva(Scanner scanner, ArrayList<Restaurante> restaurantes, Cliente cliente) {
+        System.out.println("\n--- RESTAURANTES CADASTRADOS ---");
+        for (int i = 0; i < restaurantes.size(); i++) {
+            System.out.println((i + 1) + ". " + restaurantes.get(i).getNome());
+        }
+
+        int escolha = lerInteiro(scanner, "\nEscolha o número do restaurante: ");
+        if (escolha < 1 || escolha > restaurantes.size()) {
+            System.out.println("Opção de restaurante inválida.");
+            return;
+        }
+        Restaurante restaurante = restaurantes.get(escolha - 1);
+        System.out.println("\nBem-vindo à página do restaurante: " + restaurante.getNome());
+
+        // O usuário escolhe o horário pelo número, sem precisar digitar "19:00" exato
+        ArrayList<String> horarios = restaurante.getHorariosDisponiveis();
+        restaurante.exibirHorarios();
+        int escolhaHorario = lerInteiro(scanner, "\nEscolha o número do horário: ");
+        if (escolhaHorario < 1 || escolhaHorario > horarios.size()) {
+            System.out.println("Horário inválido.");
+            return;
+        }
+        String horario = horarios.get(escolhaHorario - 1);
+
+        // Mapa de mesas mostrado para o horário escolhido
+        restaurante.exibirMapaMesas(horario);
+
+        int qtd = lerInteiro(scanner, "\nSua mesa será para quantas pessoas? ");
+        restaurante.solicitarMesa(cliente, qtd, horario);
+    }
+
+    private static void acompanharFila(ArrayList<Restaurante> restaurantes, Cliente cliente) {
+        System.out.println("\n--- STATUS DA FILA ---");
+        boolean estaNaFila = false;
+        for (Restaurante r : restaurantes) {
+            int posicao = r.acompanharFila(cliente);
+            if (posicao > 0) {
+                System.out.println("No restaurante '" + r.getNome() + "', você é o número " + posicao
+                        + " na fila das " + r.getHorarioNaFila(cliente) + ".");
+                estaNaFila = true;
+            }
+        }
+        if (!estaNaFila) {
+            System.out.println("Você não está aguardando na fila de nenhum restaurante no momento.");
+        }
+    }
+
+    // Lê um número sem derrubar o programa se o usuário digitar letras
+    private static int lerInteiro(Scanner scanner, String mensagem) {
+        while (true) {
+            System.out.print(mensagem);
+            try {
+                return Integer.parseInt(scanner.nextLine().trim());
+            } catch (NumberFormatException e) {
+                System.out.println("Digite um número válido.");
+            }
+        }
+    }
+
+    private static String lerTexto(Scanner scanner, String mensagem) {
+        while (true) {
+            System.out.print(mensagem);
+            String texto = scanner.nextLine().trim();
+            if (!texto.isEmpty()) return texto;
+            System.out.println("Este campo não pode ficar vazio.");
+        }
     }
 }

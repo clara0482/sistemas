@@ -1,30 +1,47 @@
 import java.util.ArrayList;
 
 public class FilaEspera {
-    private ArrayList<RegistroFila> registros; // Coleção 1
+    private ArrayList<RegistroFila> registros;
 
     public FilaEspera() {
         this.registros = new ArrayList<>();
     }
 
-    public void entrarFila(Cliente cliente, int quantidadePessoas) {
-        RegistroFila novoRegistro = new RegistroFila(cliente, quantidadePessoas);
+    // retorna a posição do cliente na fila daquele horário
+    public int entrarFila(Cliente cliente, int quantidadePessoas, String horario) {
+        RegistroFila novoRegistro = new RegistroFila(cliente, quantidadePessoas, horario);
         registros.add(novoRegistro);
-        System.out.println(cliente.getNome() + " entrou na fila na posição " + registros.size());
+        return acompanharPosicao(cliente);
     }
 
-    // Regra de Negócio: Calcular posição na fila e definir prioridade
-    public int acompanharPosicao(Cliente cliente) {
-        for (int i = 0; i < registros.size(); i++) {
-            if (registros.get(i).getCliente().equals(cliente)) {
-                // Se for o próximo (posição 0 ou 1) e não foi avisado, manda o aviso
-                if (i <= 1 && !registros.get(i).isAvisoPrevioEnviado()) {
-                    registros.get(i).enviarAviso();
-                }
-                return i + 1; 
+    public boolean contem(Cliente cliente) {
+        return buscar(cliente) != null;
+    }
+
+    public RegistroFila buscar(Cliente cliente) {
+        for (RegistroFila r : registros) {
+            if (r.getCliente().equals(cliente)) {
+                return r;
             }
         }
-        return -1; // Não está na fila
+        return null;
+    }
+
+    // regra de negocio: a posição é contada apenas entre quem espera
+    // pelo MESMO horario (quem espera as 22:00 não atrasa quem espera as 19:00).
+    // apenas consulta
+    public int acompanharPosicao(Cliente cliente) {
+        RegistroFila alvo = buscar(cliente);
+        if (alvo == null) return -1;
+
+        int posicao = 0;
+        for (RegistroFila r : registros) {
+            if (r.getHorario().equals(alvo.getHorario())) {
+                posicao++;
+                if (r == alvo) return posicao;
+            }
+        }
+        return -1;
     }
 
     public RegistroFila chamarProximo() {
