@@ -67,3 +67,9 @@ Os fontes ficam em `src/main/java`, os testes em `src/test/java` e as dependênc
 - **Arthur Dantas:** identificação de erros, debugging, testes e auxílio nas correções.
 - **Rafael Chada:** construção da estrutura inicial do código e organização das classes.
 - **Maria Clara:** desenvolvimento do front-end utilizando JavaFX.
+
+## Utilização de Inteligência Artificial
+
+Durante o desenvolvimento do projeto, foram utilizadas ferramentas de inteligência artificial, como ChatGPT e Codex, para auxiliar na implementação e revisão do código, identificação e correção de bugs, elaboração de testes automatizados e produção da documentação (README).
+
+As funcionalidades também foram verificadas por meio de testes manuais e automatizados.
