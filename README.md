@@ -1,70 +1,54 @@
 # Sistema de Reservas de Restaurantes
 
-Aplicação de console em Java para reservar mesas em restaurantes, com fila de espera quando não há mesa disponível. O projeto foi feito para praticar Programação Orientada a Objetos (POO), tratamento de exceções e a API de datas `java.time`.
+Projeto de Programação Orientada a Objetos para reservar mesas em restaurantes pelo console ou pela interface JavaFX. Usa Java 17 ou superior, Maven, Hibernate/JPA e banco H2 local.
 
 ## Funcionalidades
 
-- Cadastro do cliente (nome e telefone) com validação.
-- Listagem de restaurantes cadastrados.
-- Exibição dos horários disponíveis e do mapa de mesas (livre ou ocupada) antes da reserva.
-- Reserva de mesa conforme o número de pessoas e o horário escolhido.
-- Fila de espera automática quando nenhuma mesa compatível está livre.
-- Consulta da posição do cliente na fila de cada restaurante.
-- Geração aleatória de mesas, capacidades e horários, para facilitar demonstrações.
-- Tratamento de cada input com `try/catch` e exceção específica, repetindo a pergunta até receber um valor válido.
+- Cadastro de clientes com validação de nome e telefone.
+- Consulta de mesas disponíveis por restaurante, data e horário.
+- Criação, alteração e cancelamento das próprias reservas.
+- Fila de espera quando não há mesa compatível disponível.
 
-## Tecnologias
-
-- Java 11 ou superior
-- Pacote `java.time` (`LocalDateTime`, `LocalTime`, `LocalDate`, `DateTimeFormatter`)
-- `Scanner` para entrada de dados no console
-
-## Estrutura do projeto
-
-| Arquivo | Responsabilidade |
-|---|---|
-| `Main.java` | Ponto de entrada. Cadastro do cliente, menu interativo e leitura validada dos inputs. |
-| `Restaurante.java` | Gerencia mesas, horários, reservas e fila de espera. Gera os dados aleatórios. |
-| `Reserva.java` | Representa uma reserva (cliente, mesa, horário e status). |
-| `StatusReserva.java` | Enum com os status possíveis: `ATIVA`, `CONCLUIDA` e `CANCELADA`. |
-| `Mesa.java` | Representa uma mesa (número, capacidade e disponibilidade). |
-| `Cliente.java` | Representa o cliente (nome e telefone). |
-| `FilaEspera.java` | Controla a fila de clientes aguardando mesa. |
+As reservas duram duas horas. Uma mesa não pode ter reservas ativas com períodos sobrepostos. O mesmo telefone com nome diferente é rejeitado, e cancelar uma reserva não afeta reservas de outros clientes.
 
 ## Como executar
 
-### Pré-requisito
+Instale JDK 17 ou superior e Maven. Na raiz do repositório, entre na pasta do aplicativo:
 
-Ter o JDK 11 ou superior instalado. Para conferir:
-
-```bash
-java -version
-javac -version
+```text
+cd "PROJETO JV/APLICATIVO"
+mvn clean package
+mvn javafx:run
 ```
 
-### Compilar e rodar
+O Maven baixa as dependências; não é necessário instalar um SDK JavaFX separado. Para executar pelo console, na mesma pasta:
 
-```bash
-git clone https://github.com/SEU-USUARIO/SEU-REPOSITORIO.git
-cd SEU-REPOSITORIO
-
-javac *.java
-java Main
+```text
+mvn compile exec:java "-Dexec.mainClass=Main"
 ```
 
-Se os arquivos estiverem dentro de uma pasta `src`, compile com `javac src/*.java -d out` e execute com `java -cp out Main`.
+No VS Code, aguarde a importação do projeto Maven e use as configurações de execução de `MainFX` ou `Main`.
 
-## Regras de negócio
+## Banco H2
 
-- Ao criar uma reserva, a mesa é ocupada imediatamente.
-- Uma mesa só é escolhida se estiver livre e tiver capacidade igual ou maior que o número de pessoas.
-- O horário precisa estar entre os horários disponíveis do restaurante. A reserva é feita para a data de hoje.
-- Se não houver mesa compatível, o cliente entra na fila de espera do restaurante.
-- Mesas têm 2, 4, 6 ou 8 lugares. Cada restaurante recebe entre 4 e 8 mesas, e cerca de 40% começam ocupadas.
-.
+Execute sempre na pasta `APLICATIVO`. Os dados são salvos automaticamente em `dados/reservas.mv.db` e recuperados ao reiniciar. Feche uma execução antes de abrir outra com o mesmo banco.
 
+Para inspecionar o banco no Windows, use `H2.bat` com Java disponível no PATH. No console H2, informe a URL `jdbc:h2:file:./dados/reservas`, usuário `sa` e senha vazia. Essa configuração é para demonstração local. Nome e telefone identificam o cadastro, mas não oferecem autenticação segura.
+
+O banco local não é versionado. Para fazer backup, feche o aplicativo e copie o arquivo do banco para um local separado.
+
+## Testes
+
+Na pasta `APLICATIVO`:
+
+```text
+mvn clean verify -Pjavafx-ui-tests
+```
+
+Esse comando verifica as regras de reserva, persistência e interface JavaFX. Requer uma sessão gráfica e usa bancos H2 temporários, sem alterar o banco local. Para testar sem abrir janelas, use `mvn verify`.
+
+Os fontes ficam em `src/main/java`, os testes em `src/test/java` e as dependências no `pom.xml`.
 
 ## Equipe
 
 Desenvolvido por Arthur Dantas, Maria Clara, Victor Yoshi, Rafael Chada
-
