@@ -6,13 +6,16 @@
             "name": "MainFX (interface JavaFX)",
             "request": "launch",
             "mainClass": "MainFX",
-            "vmArgs": "--module-path lib/javafx-sdk-21.0.5/lib --add-modules javafx.controls"
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
         },
         {
             "type": "java",
             "name": "Main (console)",
             "request": "launch",
-            "mainClass": "Main"
+            "mainClass": "Main",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
         }
     ]
 }

@@ -1,2 +1,32 @@
 bin/
 javafx-sdk-*/
+
+# Arquivos gerados e bancos locais
+target/
+*.class
+dados/
+*.mv.db
+*.trace.db
+*.lock.db
+*.h2.db
+*.temp.db
+*.zip
+*.jar
+
+# Backups e arquivos temporários
+backup*/
+backups/
+*.bak
+*.backup
+*.tmp
+*.temp
+*.log
+*.swp
+*~
+
+# Configurações locais com credenciais
+.env
+.env.*
+!.env.example
+*.pem
+*.key

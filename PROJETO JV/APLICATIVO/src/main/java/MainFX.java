@@ -1,5 +1,10 @@
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Base64;
 
 import javafx.application.Application;
@@ -12,6 +17,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
@@ -30,11 +36,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
-/**
- * Interface gráfica (JavaFX) do app de reservas.
- * Reaproveita as classes do projeto (Cliente, Restaurante, Mesa, Reserva, FilaEspera)
- * sem alterar nenhuma regra de negócio. A versão console continua em Main.java.
- */
+
 public class MainFX extends Application {
 
     private static final String CSS = """
@@ -57,10 +59,20 @@ public class MainFX extends Application {
             """;
 
     private final ArrayList<Restaurante> restaurantes = new ArrayList<>();
+    private SistemaReservas sistema;
+    private final Map<Long, Boolean> disponibilidade = new HashMap<>();
+    private DatePicker dataReserva;
+    private ListView<Reserva> listaReservas;
     private Cliente clienteAtivo;
     private Stage stage;
 
-    // Componentes da tela de reserva
+    public MainFX() {
+    }
+
+    MainFX(SistemaReservas sistema) {
+        this.sistema = sistema;
+    }
+
     private Restaurante restauranteSelecionado;
     private Label lblNomeRestaurante;
     private ComboBox<String> cbHorarios;
@@ -73,19 +85,17 @@ public class MainFX extends Application {
     public void start(Stage primaryStage) {
         this.stage = primaryStage;
 
-        // Mesmos restaurantes do Main.java (as mesas e horários são gerados com Random)
-        restaurantes.add(new Restaurante("Sabor POO (Massas e Vinhos)"));
-        restaurantes.add(new Restaurante("Java Grill (Churrascaria)"));
-        restaurantes.add(new Restaurante("Sushi Byte (Comida Japonesa)"));
+        if (sistema == null) {
+            sistema = new SistemaReservas();
+        }
+        sistema.cadastrarRestaurantesIniciais();
+        restaurantes.addAll(sistema.listarRestaurantes());
 
         stage.setTitle("App de Reservas");
         mostrarTelaCadastro();
         stage.show();
     }
 
-    // ============================================================
-    // TELA 1: CADASTRO DO CLIENTE
-    // ============================================================
     private void mostrarTelaCadastro() {
         Label titulo = new Label("Bem-vindo ao App de Reservas");
         titulo.getStyleClass().add("titulo");
@@ -93,11 +103,14 @@ public class MainFX extends Application {
         sub.getStyleClass().add("subtitulo");
 
         TextField txtNome = new TextField();
+        txtNome.setId("nome");
         txtNome.setPromptText("Seu nome");
         TextField txtTelefone = new TextField();
+        txtTelefone.setId("telefone");
         txtTelefone.setPromptText("Seu telefone");
 
         Button btnEntrar = new Button("Entrar");
+        btnEntrar.setId("entrar");
         btnEntrar.getStyleClass().add("botao");
         btnEntrar.setMaxWidth(Double.MAX_VALUE);
         btnEntrar.setDefaultButton(true);
@@ -109,8 +122,10 @@ public class MainFX extends Application {
                 alerta(Alert.AlertType.WARNING, "Cadastro", "Preencha o nome e o telefone.");
                 return;
             }
-            clienteAtivo = new Cliente(nome, telefone);
-            mostrarTelaPrincipal();
+            executar(() -> {
+                clienteAtivo = sistema.cadastrarCliente(nome, telefone);
+                mostrarTelaPrincipal();
+            });
         });
 
         VBox card = new VBox(12, titulo, sub, new Label("Nome"), txtNome, new Label("Telefone"), txtTelefone, btnEntrar);
@@ -121,14 +136,12 @@ public class MainFX extends Application {
         trocarCena(raiz, 700, 500);
     }
 
-    // ============================================================
-    // TELA 2: PRINCIPAL (abas: Restaurantes / Minha fila)
-    // ============================================================
     private void mostrarTelaPrincipal() {
         Label ola = new Label("Olá, " + clienteAtivo.getNome() + "!");
         Region espaco = new Region();
         HBox.setHgrow(espaco, Priority.ALWAYS);
         Button btnSair = new Button("Sair");
+        btnSair.setId("sair");
         btnSair.getStyleClass().add("botao-sair");
         btnSair.setOnAction(e -> {
             clienteAtivo = null;
@@ -144,10 +157,17 @@ public class MainFX extends Application {
         Tab abaFila = new Tab("Minha posição na fila", construirAbaFila());
         abaFila.setClosable(false);
 
-        TabPane abas = new TabPane(abaReserva, abaFila);
+        Tab abaMinhasReservas = new Tab("Minhas reservas", construirAbaMinhasReservas());
+        abaMinhasReservas.setClosable(false);
+        TabPane abas = new TabPane(abaReserva, abaMinhasReservas, abaFila);
+        abas.setId("abas");
         abas.getSelectionModel().selectedItemProperty().addListener((obs, antiga, nova) -> {
             if (nova == abaFila) {
-                atualizarFila();
+                executar(this::atualizarFila);
+            } else if (nova == abaMinhasReservas) {
+                executar(this::atualizarReservas);
+            } else if (nova == abaReserva) {
+                executar(this::atualizarMesas);
             }
         });
 
@@ -157,12 +177,11 @@ public class MainFX extends Application {
         trocarCena(raiz, 980, 620);
     }
 
-    // ---------- Aba 1: escolher restaurante e reservar ----------
     private Region construirAbaReserva() {
-        // Lista de restaurantes (lado esquerdo)
         Label lblRest = new Label("Restaurantes");
         lblRest.getStyleClass().add("secao");
         ListView<Restaurante> listaRestaurantes = new ListView<>(FXCollections.observableArrayList(restaurantes));
+        listaRestaurantes.setId("restaurantes");
         listaRestaurantes.setCellFactory(lv -> new ListCell<>() {
             @Override
             protected void updateItem(Restaurante r, boolean vazio) {
@@ -175,15 +194,23 @@ public class MainFX extends Application {
         esquerda.getStyleClass().add("card");
         esquerda.setPrefWidth(300);
 
-        // Detalhes do restaurante (lado direito)
         lblNomeRestaurante = new Label("Selecione um restaurante");
         lblNomeRestaurante.getStyleClass().add("titulo");
 
+        dataReserva = new DatePicker(LocalDate.now().plusDays(1));
+        dataReserva.setId("data-reserva");
+        dataReserva.setEditable(false);
+        dataReserva.setOnAction(e -> executar(this::atualizarMesas));
         cbHorarios = new ComboBox<>();
+        cbHorarios.setId("horario");
+        cbHorarios.setItems(FXCollections.observableArrayList(
+                SistemaReservas.HORARIOS.stream().map(h -> h.toString()).toList()));
+        cbHorarios.setOnAction(e -> executar(this::atualizarMesas));
         cbHorarios.setPromptText("Escolha o horário");
         cbHorarios.setPrefWidth(180);
 
         tabelaMesas = new TableView<>();
+        tabelaMesas.setId("mesas");
         tabelaMesas.setPlaceholder(new Label("Escolha um restaurante para ver o mapa de mesas"));
         tabelaMesas.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
@@ -194,7 +221,7 @@ public class MainFX extends Application {
         colCapacidade.setCellValueFactory(c -> new SimpleIntegerProperty(c.getValue().getCapacidade()));
 
         TableColumn<Mesa, String> colStatus = new TableColumn<>("Status");
-        colStatus.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().isDisponivel() ? "Livre" : "Ocupada"));
+        colStatus.setCellValueFactory(c -> new SimpleStringProperty(Boolean.TRUE.equals(disponibilidade.get(c.getValue().getId())) ? "Livre" : "Ocupada"));
         colStatus.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String status, boolean vazio) {
@@ -209,17 +236,21 @@ public class MainFX extends Application {
                 }
             }
         });
-        tabelaMesas.getColumns().addAll(colNumero, colCapacidade, colStatus);
+        tabelaMesas.getColumns().add(colNumero);
+        tabelaMesas.getColumns().add(colCapacidade);
+        tabelaMesas.getColumns().add(colStatus);
         VBox.setVgrow(tabelaMesas, Priority.ALWAYS);
 
-        spQuantidade = new Spinner<>(1, 20, 2);
+        spQuantidade = new Spinner<>(1, 8, 2);
+        spQuantidade.setId("quantidade");
         spQuantidade.setEditable(true);
         spQuantidade.setPrefWidth(90);
 
         btnReservar = new Button("Reservar mesa");
+        btnReservar.setId("reservar");
         btnReservar.getStyleClass().add("botao");
         btnReservar.setDisable(true);
-        btnReservar.setOnAction(e -> reservar());
+        btnReservar.setOnAction(e -> executar(this::reservar));
 
         HBox linhaReserva = new HBox(12,
                 new Label("Pessoas:"), spQuantidade,
@@ -230,13 +261,15 @@ public class MainFX extends Application {
         Label lblMesas = new Label("Mapa de mesas do local");
         lblMesas.getStyleClass().add("secao");
 
-        VBox direita = new VBox(12, lblNomeRestaurante, lblMesas, tabelaMesas, linhaReserva);
+        HBox linhaData = new HBox(12, new Label("Data:"), dataReserva);
+        linhaData.setAlignment(Pos.CENTER_LEFT);
+        VBox direita = new VBox(12, lblNomeRestaurante, linhaData, lblMesas, tabelaMesas, linhaReserva);
         direita.getStyleClass().add("card");
         HBox.setHgrow(direita, Priority.ALWAYS);
 
         listaRestaurantes.getSelectionModel().selectedItemProperty().addListener((obs, antigo, novo) -> {
             if (novo != null) {
-                selecionarRestaurante(novo);
+                executar(() -> selecionarRestaurante(novo));
             }
         });
 
@@ -248,9 +281,31 @@ public class MainFX extends Application {
     private void selecionarRestaurante(Restaurante r) {
         restauranteSelecionado = r;
         lblNomeRestaurante.setText(r.getNome());
-        cbHorarios.setItems(FXCollections.observableArrayList(r.getHorariosDisponiveis()));
-        cbHorarios.getSelectionModel().clearSelection();
-        tabelaMesas.setItems(FXCollections.observableArrayList(r.getMesas()));
+        if (cbHorarios.getValue() == null) {
+            cbHorarios.getSelectionModel().selectFirst();
+        }
+        atualizarMesas();
+    }
+
+    private LocalDateTime horarioSelecionado() {
+        if (dataReserva.getValue() == null || cbHorarios.getValue() == null) {
+            throw new IllegalArgumentException("Escolha a data e o horário da reserva.");
+        }
+        return Main.interpretarHorario(
+                dataReserva.getValue().format(DateTimeFormatter.ofPattern("dd/MM/uuuu")),
+                cbHorarios.getValue());
+    }
+
+    private void atualizarMesas() {
+        tabelaMesas.getItems().clear();
+        disponibilidade.clear();
+        btnReservar.setDisable(true);
+        if (restauranteSelecionado == null) {
+            return;
+        }
+        Map<Mesa, Boolean> mesas = sistema.listarMesas(restauranteSelecionado.getId(), horarioSelecionado());
+        mesas.forEach((mesa, livre) -> disponibilidade.put(mesa.getId(), livre));
+        tabelaMesas.setItems(FXCollections.observableArrayList(mesas.keySet()));
         btnReservar.setDisable(false);
     }
 
@@ -258,47 +313,109 @@ public class MainFX extends Application {
         if (restauranteSelecionado == null) {
             return;
         }
-        String horario = cbHorarios.getValue();
-        if (horario == null) {
-            alerta(Alert.AlertType.WARNING, "Reserva", "Escolha um horário disponível.");
-            return;
-        }
-
         int quantidade;
         try {
-            // Lê o texto do editor para considerar números digitados à mão no Spinner
             quantidade = Integer.parseInt(spQuantidade.getEditor().getText().trim());
-            if (quantidade < 1) {
-                throw new NumberFormatException();
-            }
         } catch (NumberFormatException ex) {
-            alerta(Alert.AlertType.WARNING, "Reserva", "Informe uma quantidade de pessoas válida.");
-            return;
+            throw new IllegalArgumentException("Informe uma quantidade de pessoas válida.");
         }
-
-        // Regra de negócio permanece na classe Restaurante
-        boolean reservou = restauranteSelecionado.solicitarMesa(clienteAtivo, quantidade, horario);
-
-        if (reservou) {
-            ArrayList<Reserva> reservas = restauranteSelecionado.getReservas();
-            Mesa mesa = reservas.get(reservas.size() - 1).getMesa();
+        Reserva reserva = sistema.solicitarMesa(restauranteSelecionado.getId(), clienteAtivo.getId(),
+                quantidade, horarioSelecionado());
+        atualizarMesas();
+        if (reserva != null) {
             alerta(Alert.AlertType.INFORMATION, "Reserva confirmada",
-                    "Mesa " + mesa.getNumero() + " (até " + mesa.getCapacidade() + " pessoas)\n"
-                            + "reservada em " + restauranteSelecionado.getNome() + " às " + horario + ".");
+                    "Reserva #" + reserva.getId() + " confirmada na mesa " + reserva.getMesa().getNumero()
+                            + " para " + reserva.getQuantidadePessoas() + " pessoas.");
         } else {
-            alerta(Alert.AlertType.WARNING, "Sem mesa disponível",
-                    "Nenhuma mesa compatível ou livre neste momento em " + restauranteSelecionado.getNome() + ".\n"
-                            + "Você foi redirecionado para a fila de espera.");
+            alerta(Alert.AlertType.INFORMATION, "Fila de espera",
+                    "Sem mesa disponível. Sua solicitação está na fila de espera.");
         }
-        tabelaMesas.refresh();
     }
 
-    // ---------- Aba 2: acompanhar fila ----------
+    private Region construirAbaMinhasReservas() {
+        listaReservas = new ListView<>();
+        listaReservas.setId("reservas");
+        listaReservas.setPlaceholder(new Label("Você ainda não tem reservas."));
+        listaReservas.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Reserva reserva, boolean vazio) {
+                super.updateItem(reserva, vazio);
+                if (vazio || reserva == null) {
+                    setText(null);
+                    return;
+                }
+                String pessoas = reserva.getQuantidadePessoas() == null
+                        ? "Quantidade não informada (reserva antiga)"
+                        : reserva.getQuantidadePessoas() + " pessoas";
+                setText("#" + reserva.getId() + " | " + reserva.getMesa().getRestaurante().getNome()
+                        + " | Mesa " + reserva.getMesa().getNumero() + " | "
+                        + reserva.getHorario().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                        + " | " + pessoas + " | " + reserva.getStatus());
+            }
+        });
+        VBox.setVgrow(listaReservas, Priority.ALWAYS);
+        Spinner<Integer> quantidade = new Spinner<>(1, 8, 2);
+        quantidade.setId("quantidade-alteracao");
+        quantidade.setEditable(true);
+        quantidade.setPrefWidth(90);
+        Button alterar = new Button("Alterar reserva");
+        alterar.setId("alterar");
+        alterar.setOnAction(e -> executar(() -> {
+            Reserva reserva = reservaSelecionada();
+            int pessoas;
+            try {
+                pessoas = Integer.parseInt(quantidade.getEditor().getText().trim());
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Informe uma quantidade de pessoas válida.");
+            }
+            boolean alterada = sistema.alterarReserva(reserva.getId(), clienteAtivo.getId(), pessoas);
+            atualizarReservas();
+            alerta(Alert.AlertType.INFORMATION, "Alterar reserva", alterada
+                    ? "Reserva alterada."
+                    : "Sem mesa disponível para a troca, considerando a prioridade da fila. A reserva original foi mantida.");
+        }));
+        Button cancelar = new Button("Cancelar reserva");
+        cancelar.setId("cancelar");
+        cancelar.setOnAction(e -> executar(() -> {
+            Reserva reserva = reservaSelecionada();
+            boolean cancelada = sistema.cancelarReserva(reserva.getId(), clienteAtivo.getId());
+            atualizarReservas();
+            alerta(Alert.AlertType.INFORMATION, "Cancelar reserva", cancelada
+                    ? "Reserva cancelada." : "Reserva não encontrada ou já encerrada.");
+        }));
+        Button atualizar = new Button("Atualizar");
+        atualizar.setOnAction(e -> executar(this::atualizarReservas));
+        HBox botoes = new HBox(12, new Label("Pessoas:"), quantidade, alterar, cancelar, atualizar);
+        botoes.setAlignment(Pos.CENTER_LEFT);
+        VBox conteudo = new VBox(12, listaReservas, botoes);
+        conteudo.setPadding(new Insets(16));
+        return conteudo;
+    }
+
+    private Reserva reservaSelecionada() {
+        Reserva reserva = listaReservas.getSelectionModel().getSelectedItem();
+        if (reserva == null) {
+            throw new IllegalArgumentException("Selecione uma reserva.");
+        }
+        return reserva;
+    }
+
+    private void atualizarEstado() {
+        atualizarReservas();
+        atualizarMesas();
+        atualizarFila();
+    }
+
+    private void atualizarReservas() {
+        listaReservas.setItems(FXCollections.observableArrayList(sistema.listarReservas(clienteAtivo.getId())));
+    }
+
     private Region construirAbaFila() {
         Label titulo = new Label("Status da fila");
         titulo.getStyleClass().add("secao");
 
         listaFila = new ListView<>();
+        listaFila.setId("fila");
         Label vazio = new Label("Você não está aguardando na fila de nenhum restaurante no momento.");
         vazio.getStyleClass().add("horario-vazio");
         listaFila.setPlaceholder(vazio);
@@ -306,7 +423,7 @@ public class MainFX extends Application {
 
         Button btnAtualizar = new Button("Atualizar");
         btnAtualizar.getStyleClass().add("botao");
-        btnAtualizar.setOnAction(e -> atualizarFila());
+        btnAtualizar.setOnAction(e -> executar(this::atualizarFila));
 
         VBox card = new VBox(12, titulo, listaFila, btnAtualizar);
         card.getStyleClass().add("card");
@@ -319,21 +436,28 @@ public class MainFX extends Application {
 
     private void atualizarFila() {
         listaFila.getItems().clear();
-        for (Restaurante r : restaurantes) {
-            int posicao = r.acompanharFila(clienteAtivo);
-            if (posicao > 0) {
-                String texto = "No restaurante '" + r.getNome() + "', você é o número " + posicao + " na fila.";
-                if (posicao <= 2) {
-                    texto += "  Aviso: sua mesa está quase pronta!";
-                }
-                listaFila.getItems().add(texto);
-            }
+        for (Map.Entry<RegistroFila, Integer> item : sistema.consultarFila(clienteAtivo.getId()).entrySet()) {
+            RegistroFila registro = item.getKey();
+            listaFila.getItems().add(registro.getRestaurante().getNome() + " | "
+                    + registro.horarioDesejado().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                    + ": posição " + item.getValue()
+                    + ". Atendimento conforme horário, capacidade e disponibilidade.");
         }
     }
 
-    // ============================================================
-    // Utilitários
-    // ============================================================
+    private void executar(Runnable acao) {
+        try {
+            acao.run();
+        } catch (RuntimeException e) {
+            alerta(Alert.AlertType.WARNING, "Não foi possível concluir a operação", e.getMessage());
+        }
+    }
+
+    @Override
+    public void stop() {
+        HibernateUtil.fechar();
+    }
+
     private void trocarCena(Region raiz, double largura, double altura) {
         Scene cena = new Scene(raiz, largura, altura);
         String css = "data:text/css;base64,"
@@ -352,7 +476,7 @@ public class MainFX extends Application {
         a.showAndWait();
     }
 
-    /** Painel simples que centraliza um nó no meio da tela. */
+
     private static class StackCentro extends javafx.scene.layout.StackPane {
         StackCentro(javafx.scene.Node filho) {
             getChildren().add(filho);

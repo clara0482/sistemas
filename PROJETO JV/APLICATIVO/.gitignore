@@ -1,0 +1,6 @@
+target/
+bin/
+*.class
+dados/*.mv.db
+dados/*.trace.db
+dados/*.lock.db
